@@ -3,4 +3,4 @@ __pycache__/
 *.pyc
 venv/
 .coverage
-.mp4
+*.mp4

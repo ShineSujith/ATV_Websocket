@@ -2,17 +2,17 @@ import os
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.staticfiles import StaticFiles
 from pathlib import Path
-# import pika
 import aio_pika
 from contextlib import asynccontextmanager
 import asyncio
-import json
 
 RABBIT_URL = os.getenv("RABBIT_URL")
 EXCHANGE_NAME = "ATV_Project_Exchange"
 
 VIDEOS_DIR = Path("videos")
 os.makedirs(VIDEOS_DIR, exist_ok=True)
+
+clients = set()
 
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
@@ -52,22 +52,6 @@ async def websocket_endpoint(ws: WebSocket):
             await ws.receive_text()  # Keep connection alive
     except WebSocketDisconnect:
         clients.remove(ws)
-
-# connection = pika.BlockingConnection(pika.URLParameters(RABBIT_URL))
-# channel = connection.channel()
-# channel.queue_declare(queue=EXCHANGE_NAME, durable=True)
-# channel.basic_qos(prefetch_count=1)
-
-# def on_message(ch, method, properties, body):
-#     filename = properties.headers.get("filename", "received.mp4")
-#     with open(filename, "wb") as f:
-#         f.write(body)
-#     print(f"Received {len(body)} bytes")
-#     video_ready(fileName)
-#     ch.basic_ack(method.delivery_tag)
-
-# channel.basic_consume(queue=EXCHANGE_NAME, on_message_callback=on_message)
-# channel.start_consuming()
 
 async def rabbit_mq_listener():
     """
