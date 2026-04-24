@@ -5,6 +5,7 @@ from pathlib import Path
 import aio_pika
 from contextlib import asynccontextmanager
 import asyncio
+from moviepy import VideoFileClip, concatenate_videoclips
 
 RABBIT_URL = os.getenv("RABBIT_URL")
 EXCHANGE_NAME = "ATV_Project_Exchange"
@@ -78,11 +79,27 @@ async def rabbit_mq_listener():
                     data = msg.body
                     print(f"{queue_name} Event:", msg.routing_key, data)
                     filename = os.path.basename(msg.headers.get("filename", "received.mp4"))
-                    file_path = os.path.join(VIDEOS_DIR, filename)
-                    with open(file_path, "wb") as f:
-                        f.write(msg.body)
-                    print(f"Received {len(msg.body)} bytes")
-                    await video_ready(filename)
+                    file_path = os.path.join(VIDEOS_DIR, "current_output.mp4")
+                    incoming_path = os.path.join(VIDEOS_DIR, filename)
+                    output_path = os.path.join(VIDEOS_DIR, "output_temp.mp4")
+                    print(f"Received {len(data)} bytes")
+                    if os.path.exists(file_path):
+                        with open(incoming_path, "wb") as f:
+                            f.write(data)
+                        vid1 = VideoFileClip(file_path)
+                        vid2 = VideoFileClip(incoming_path)
+                        try:
+                            final = concatenate_videoclips([vid1, vid2])
+                            final.write_videofile(output_path)
+                        finally:
+                            final.close()
+                            vid1.close()
+                            vid2.close()
+                        os.replace(output_path, file_path)
+                    else:
+                        with open(file_path, "wb") as f:
+                            f.write(data)
+                    await video_ready("current_output.mp4")
     await asyncio.gather(
         read_queue(video_queue, "Video"),
     )
